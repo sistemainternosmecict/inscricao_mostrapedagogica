@@ -1,0 +1,132 @@
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+import os
+
+SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/documents']
+CREDS_FILE = 'creds.json'
+
+class Gide:
+    def __init__(self):
+        try:
+            creds = service_account.Credentials.from_service_account_file(
+                CREDS_FILE, scopes=SCOPES)
+            self.service = build('drive', 'v3', credentials=creds)
+            self.docs_service = build('docs', 'v1', credentials=creds)
+            print("Google Drive and Docs services initialized successfully.")
+        except Exception as e:
+            print(f"Error initializing Google Drive or Docs services: {e}")
+            self.service = None
+
+    def criar_pasta(self, folder_name, parent_folder_id=None):
+        if not self.service:
+            print("Service not initialized. Cannot create folder.")
+            return None
+
+        file_metadata = {
+            'name': folder_name,
+            'mimeType': 'application/vnd.google-apps.folder'
+        }
+        if parent_folder_id:
+            file_metadata['parents'] = [parent_folder_id]
+
+        try:
+            folder = self.service.files().create(body=file_metadata, fields='id').execute()
+            print(f"Folder '{folder_name}' created with ID: {folder.get('id')}")
+            return folder.get('id')
+        except HttpError as error:
+            print(f"An error occurred: {error}")
+            return None
+
+    def _find_folder_id(self, folder_name, parent_folder_id):
+        if not self.service:
+            print("Service not initialized. Cannot find folder.")
+            return None
+        
+        query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and '{parent_folder_id}' in parents and trashed=false"
+        try:
+            results = self.service.files().list(q=query, fields="files(id, name)").execute()
+            items = results.get('files', [])
+            if not items:
+                print(f"No folder found with name '{folder_name}' in parent '{parent_folder_id}'.")
+                return None
+            return items[0]['id']
+        except HttpError as error:
+            print(f"An error occurred while finding folder: {error}")
+            return None
+
+    def criar_arquivo_docs(self, doc_name, data, shared_folder_id, subfolder_name):
+        if not self.service or not self.docs_service:
+            print("Drive or Docs service not initialized. Cannot create document.")
+            return None
+
+        # 1. Find the subfolder ID
+        subfolder_id = self._find_folder_id(subfolder_name, shared_folder_id)
+        if not subfolder_id:
+            print(f"Subfolder '{subfolder_name}' not found within shared folder ID '{shared_folder_id}'. Cannot create document.")
+            return None
+
+        # 2. Create the Docs file
+        document_body = {'title': doc_name}
+        try:
+            doc = self.docs_service.documents().create(body=document_body).execute()
+            document_id = doc.get('documentId')
+            print(f"Google Doc '{doc_name}' created with ID: {document_id}")
+        except HttpError as error:
+            print(f"An error occurred while creating document: {error}")
+            return None
+
+        # 3. Insert content into the Docs file
+        requests = [
+            {
+                'insertText': {
+                    'location': {
+                        'index': 1,
+                    },
+                    'text': f"Unidade Escolar: {data.get('unidade_escolar', 'N/A')}\n"
+                            f"Email Principal: {data.get('email_principal', 'N/A')}\n"
+                            f"Categoria: {data.get('categoria', 'N/A')}\n"
+                }
+            }
+        ]
+        try:
+            self.docs_service.documents().batchUpdate(documentId=document_id, body={'requests': requests}).execute()
+            print(f"Content added to document {document_id}.")
+        except HttpError as error:
+            print(f"An error occurred while inserting content: {error}")
+            # If content insertion fails, we should still try to move the document
+            # or handle it appropriately. For now, just print error.
+
+        # 4. Move the Docs file to the subfolder
+        try:
+            # First remove from root (or wherever it was created by default)
+            self.service.files().update(fileId=document_id,
+                                        removeParents='root', # Assuming it's created in root
+                                        addParents=subfolder_id,
+                                        fields='id, parents').execute()
+            print(f"Document '{doc_name}' moved to folder ID: {subfolder_id}")
+            return document_id
+        except HttpError as error:
+            print(f"An error occurred while moving document: {error}")
+            return None
+
+
+if __name__ == '__main__':
+    # This block is for local testing of the Gide class
+    # Replace 'YOUR_PARENT_FOLDER_ID' with the actual ID of your shared folder
+    # You can get this ID from the URL when you open the shared folder in Google Drive
+    gide_instance = Gide()
+    if gide_instance.service:
+        # Example: Create a folder named 'Test Folder from Gide' in the root of the drive
+        # If you want to create it in a specific shared folder, provide its ID
+        parent_id = input("Enter the ID of the parent folder where you want to create the new folder (leave empty for root): ").strip()
+        new_folder_name = input("Enter the name of the new folder to create: ").strip()
+
+        if new_folder_name:
+            created_folder_id = gide_instance.criar_pasta(new_folder_name, parent_id if parent_id else None)
+            if created_folder_id:
+                print(f"Successfully created folder: {new_folder_name} (ID: {created_folder_id})")
+            else:
+                print(f"Failed to create folder: {new_folder_name}")
+        else:
+            print("Folder name cannot be empty.")
