@@ -29,8 +29,6 @@ def process_participants(data, num_participants):
     max_participants = min(num_participants, 10)
     
     # Define expected fields for a participant
-    # Assuming 'nome-completo', 'matricula', 'cpf' are the primary fields.
-    # Add other fields here if they should be consistently captured for each participant.
     participant_fields = ["nome-completo", "matricula", "cpf"] 
 
     for i in range(1, max_participants + 1):
@@ -38,19 +36,24 @@ def process_participants(data, num_participants):
         found_any_field_for_participant = False
 
         for field_name in participant_fields:
-            full_key = f"p{num_participants}-{field_name}-{i}" # Corrected full_key construction
-            value = data.get(full_key) # Get value for the specific full key
+            # Construct key based on user specification
+            if num_participants == 1:
+                full_key = f"1p-{field_name}"
+            else:
+                full_key = f"{num_participants}p-{field_name}-{i}"
+            
+            value = data.get(full_key)
 
-            if value is not None: # Only process if the key exists in data (even if empty string)
+            if value is not None:
                 found_any_field_for_participant = True
                 if field_name == "matricula":
-                    participant_data[field_name] = mask_matricula(str(value)) # Ensure value is string for mask
+                    participant_data[field_name] = mask_matricula(str(value))
                 elif field_name == "cpf":
-                    participant_data[field_name] = mask_cpf(str(value)) # Ensure value is string for mask
+                    participant_data[field_name] = mask_cpf(str(value))
                 else:
-                    participant_data[field_name] = value # Capture other fields directly
+                    participant_data[field_name] = value
         
-        if found_any_field_for_participant: # Only append if at least one expected field was found for this participant
+        if found_any_field_for_participant:
             participants.append(participant_data)
             
     return participants
@@ -116,11 +119,11 @@ def inscricao_entrada():
                 if key == "participantes" and isinstance(value, list):
                     if value: # Only add participants section if there are participants
                         doc_content_lines.append(f"{key.replace('-', ' ').title()}:")
-                        for i, participant in enumerate(value):
+                        for participant in value:
                             nome = participant.get("nome-completo", "N/A")
                             matricula = participant.get("matricula", "N/A")
                             cpf = participant.get("cpf", "N/A")
-                            doc_content_lines.append(f"  Participante {i+1} - {nome} / {matricula} / {cpf}")
+                            doc_content_lines.append(f"  {nome} / {matricula} / {cpf}")
                 elif isinstance(value, str) and url_pattern.search(value):
                     url_fields_to_move.append(f"{key.replace('-', ' ').title()}: {value}")
                 else:
