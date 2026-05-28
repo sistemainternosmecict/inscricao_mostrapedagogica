@@ -2,6 +2,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os
+import re
 
 SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/documents']
 CREDS_FILE = 'creds.json'
@@ -55,6 +56,65 @@ class Gide:
             print(f"An error occurred while finding folder: {error}")
             return None
 
+    def _build_docs_insert_requests(self, content_string):
+        requests = []
+        current_index = 1 # Google Docs API uses 1-based indexing for content
+        
+        # Regex to find URLs
+        url_pattern = r"https?://[^\s]+" 
+
+        last_match_end = 0
+        for match in re.finditer(url_pattern, content_string):
+            # Add text before the URL
+            pre_url_text = content_string[last_match_end:match.start()]
+            if pre_url_text:
+                requests.append({
+                    'insertText': {
+                        'location': {'segmentId': '', 'index': current_index},
+                        'text': pre_url_text
+                    }
+                })
+                current_index += len(pre_url_text)
+
+            # Add the URL as a clickable link
+            url_text = match.group(0)
+            requests.append({
+                'insertText': {
+                    'location': {'segmentId': '', 'index': current_index},
+                    'text': url_text
+                }
+            })
+            requests.append({
+                'updateTextStyle': {
+                    'range': {
+                        'segmentId': '',
+                        'startIndex': current_index,
+                        'endIndex': current_index + len(url_text)
+                    },
+                    'textStyle': {
+                        'link': {
+                            'url': url_text
+                        }
+                    },
+                    'fields': 'link'
+                }
+            })
+            current_index += len(url_text)
+            last_match_end = match.end()
+
+        # Add any remaining text after the last URL
+        remaining_text = content_string[last_match_end:]
+        if remaining_text:
+            requests.append({
+                'insertText': {
+                    'location': {'segmentId': '', 'index': current_index},
+                    'text': remaining_text
+                }
+            })
+            current_index += len(remaining_text)
+        
+        return requests
+
     def criar_arquivo_docs(self, doc_name, content_to_insert, shared_folder_id, subfolder_name):
         if not self.service or not self.docs_service:
             print("Drive or Docs service not initialized. Cannot create document.")
@@ -77,23 +137,16 @@ class Gide:
             return None
 
         # 3. Insert content into the Docs file
-        requests = [
-            {
-                'insertText': {
-                    'location': {
-                        'index': 1,
-                    },
-                    'text': content_to_insert
-                }
-            }
-        ]
-        try:
-            self.docs_service.documents().batchUpdate(documentId=document_id, body={'requests': requests}).execute()
-            print(f"Content added to document {document_id}.")
-        except HttpError as error:
-            print(f"An error occurred while inserting content: {error}")
-            # If content insertion fails, we should still try to move the document
-            # or handle it appropriately. For now, just print error.
+        requests = self._build_docs_insert_requests(content_to_insert)
+        
+        if requests: # Only batch update if there are requests
+            try:
+                self.docs_service.documents().batchUpdate(documentId=document_id, body={'requests': requests}).execute()
+                print(f"Content added to document {document_id}.")
+            except HttpError as error:
+                print(f"An error occurred while inserting content: {error}")
+                # If content insertion fails, we should still try to move the document
+                # or handle it appropriately. For now, just print error.
 
         # 4. Move the Docs file to the subfolder
         try:
