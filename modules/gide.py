@@ -113,20 +113,22 @@ class Gide:
             print("Service not initialized. Cannot create folder structure.")
             return None
 
-        # 1. Create/Get Categoria Folder
-        categoria_folder_id = self.criar_pasta(categoria_name, root_folder_id)
+        # 1. Find or Create Categoria Folder
+        categoria_folder_id = self._find_folder_id(categoria_name, root_folder_id)
         if not categoria_folder_id:
-            categoria_folder_id = self._find_folder_id(categoria_name, root_folder_id)
+            # If not found, try to create it
+            categoria_folder_id = self.criar_pasta(categoria_name, root_folder_id)
             if not categoria_folder_id:
-                print(f"Failed to create or find Category folder: {categoria_name}")
+                print(f"Failed to create Category folder: {categoria_name}")
                 return None
-
-        # 2. Create/Get UE Folder inside Categoria Folder
-        ue_folder_id = self.criar_pasta(ue_name, categoria_folder_id)
+        
+        # 2. Find or Create UE Folder inside Categoria Folder
+        ue_folder_id = self._find_folder_id(ue_name, categoria_folder_id)
         if not ue_folder_id:
-            ue_folder_id = self._find_folder_id(ue_name, categoria_folder_id)
+            # If not found, try to create it
+            ue_folder_id = self.criar_pasta(ue_name, categoria_folder_id)
             if not ue_folder_id:
-                print(f"Failed to create or find UE folder: {ue_name}")
+                print(f"Failed to create UE folder: {ue_name}")
                 return None
         
         return ue_folder_id
