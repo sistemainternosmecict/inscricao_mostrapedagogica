@@ -38,7 +38,13 @@ def process_participants(data, num_participants):
         found_any_field_for_participant = False
 
         for field_name in participant_fields:
-            full_key = f"p{num_participants}-{field_name}-{i}" # Corrected full_key construction
+            full_key = ""
+            if num_participants == 1:
+                # Example: "1p-nome-completo"
+                full_key = f"{num_participants}p-{field_name}"
+            else:
+                # Example: "2p-nome-completo-1" or "3p-matricula-2"
+                full_key = f"{num_participants}p-{field_name}-{i}"
             value = data.get(full_key) # Get value for the specific full key
 
             if value is not None: # Only process if the key exists in data (even if empty string)
@@ -116,11 +122,11 @@ def inscricao_entrada():
                 if key == "participantes" and isinstance(value, list):
                     if value: # Only add participants section if there are participants
                         doc_content_lines.append(f"{key.replace('-', ' ').title()}:")
-                        for i, participant in enumerate(value):
+                        for participant_idx, participant in enumerate(value):
                             nome = participant.get("nome-completo", "N/A")
                             matricula = participant.get("matricula", "N/A")
                             cpf = participant.get("cpf", "N/A")
-                            doc_content_lines.append(f"  Participante {i+1} - {nome} / {matricula} / {cpf}")
+                            doc_content_lines.append(f"  {nome} / {matricula} / {cpf}")
                 elif isinstance(value, str) and url_pattern.search(value):
                     url_fields_to_move.append(f"{key.replace('-', ' ').title()}: {value}")
                 else:
