@@ -27,22 +27,33 @@ def process_participants(data, num_participants):
     participants = []
     # Limit processing to a maximum of 10 participants, as specified by the user
     max_participants = min(num_participants, 10)
+    
+    # Define expected fields for a participant
+    # Assuming 'nome_completo', 'matricula', 'cpf' are the primary fields.
+    # Add other fields here if they should be consistently captured for each participant.
+    participant_fields = ["nome_completo", "matricula", "cpf"] 
+
     for i in range(1, max_participants + 1):
         p_prefix = f"{i}p-"
         participant_data = {}
-        found_participant_data = False
-        for key, value in data.items():
-            if key.startswith(p_prefix):
-                new_key = key[len(p_prefix):] # Remove prefix
-                if "matricula" in new_key and value:
-                    participant_data[new_key] = mask_matricula(value)
-                elif "cpf" in new_key and value:
-                    participant_data[new_key] = mask_cpf(value)
+        found_any_field_for_participant = False
+
+        for field_name in participant_fields:
+            full_key = f"{p_prefix}{field_name}"
+            value = data.get(full_key) # Get value for the specific full key
+
+            if value is not None: # Only process if the key exists in data (even if empty string)
+                found_any_field_for_participant = True
+                if field_name == "matricula":
+                    participant_data[field_name] = mask_matricula(str(value)) # Ensure value is string for mask
+                elif field_name == "cpf":
+                    participant_data[field_name] = mask_cpf(str(value)) # Ensure value is string for mask
                 else:
-                    participant_data[new_key] = value
-                found_participant_data = True
-        if found_participant_data:
+                    participant_data[field_name] = value # Capture other fields directly
+        
+        if found_any_field_for_participant: # Only append if at least one expected field was found for this participant
             participants.append(participant_data)
+            
     return participants
 
 
