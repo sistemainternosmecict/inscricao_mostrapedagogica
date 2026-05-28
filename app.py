@@ -3,12 +3,14 @@ from flask_cors import CORS
 from pprint import pprint
 import os
 from modules.gide import Gide # Import the Gide class
+import re
 
 app = Flask(__name__)
 CORS(app)
 
 GOOGLE_DRIVE_ROOT_FOLDER_ID = "15UaJIAtDxLd7qGYr_JZ6DscqAkWejxgX"
 gide_instance = Gide()
+url_pattern = re.compile(r"https?://[^\s]+")
 
 
 def mask_matricula(matricula):
@@ -95,6 +97,33 @@ def inscricao_entrada():
                 "participantes": processed_participants
             }
 
+            doc_content_lines = []
+            url_fields_to_move = []
+
+            for key, value in doc_data.items():
+                if key == "participantes" and isinstance(value, list):
+                    if value: # Only add participants section if there are participants
+                        doc_content_lines.append(f"{key.replace('-', ' ').title()}:")
+                        for i, participant in enumerate(value):
+                            nome = participant.get("nome_completo", "N/A")
+                            matricula = participant.get("matricula", "N/A")
+                            cpf = participant.get("cpf", "N/A")
+                            doc_content_lines.append(f"  Participante {i+1} - {nome} / {matricula} / {cpf}")
+                elif isinstance(value, str) and url_pattern.search(value):
+                    url_fields_to_move.append(f"{key.replace('-', ' ').title()}: {value}")
+                else:
+                    # Exclude the "numero-participantes" field from the main display
+                    if key != "numero-participantes":
+                        doc_content_lines.append(f"{key.replace('-', ' ').title()}: {value}")
+
+            doc_content = "\n".join(doc_content_lines)
+
+            # Append URL fields at the bottom, separated by a horizontal bar
+            if url_fields_to_move:
+                doc_content += "\n\n----------------------------------------------------\n\n"
+                doc_content += "Links Relacionados:\n"
+                doc_content += "\n".join(url_fields_to_move)
+
             # --- Gide Integration ---
             if not gide_instance.service:
                 return jsonify({"error": "Google Drive service not initialized."}), 500
@@ -114,30 +143,6 @@ def inscricao_entrada():
             # 3. Create Google Doc with processed data
             doc_name = f"Inscricao_{projeto}_{telefone}"
             
-            # Convert doc_data to a formatted string for the Google Doc
-            doc_content = ""
-            for key, value in doc_data.items():
-                if isinstance(value, list): # For participants
-                    doc_content += f"{key.replace('-', ' ').title()}:\n"
-                    for i, participant in enumerate(value):
-                        doc_content += f"  Participante {i+1}:\n"
-                        for p_key, p_value in participant.items():
-                            doc_content += f"    {p_key.replace('-', ' ').title()}: {p_value}\n"
-                else:
-                    doc_content += f"{key.replace('-', ' ').title()}: {value}\n"
-
-
-            # The `criar_arquivo_docs` function in gide.py expects `data` to be a dict
-            # and extracts specific keys for the initial insert.
-            # I will need to modify `gide.py` to accept the full formatted string,
-            # or modify this section to fit `gide.py`'s current behavior
-            # Let's adjust gide.py to accept a full string for content
-            # For now, I will pass the doc_data directly, but recognize that
-            # gide.py will only use a few hardcoded fields.
-            # A better approach: modify gide.py's `criar_arquivo_docs` to accept a `content_string` parameter
-            # For this iteration, I'll pass a simplified dict to match `gide.py`'s current content handling.
-            # Then I'll refine `gide.py` if needed.
-
             document_id = gide_instance.criar_arquivo_docs(doc_name, doc_content, ue_folder_id, projeto)
 
             if not document_id:
