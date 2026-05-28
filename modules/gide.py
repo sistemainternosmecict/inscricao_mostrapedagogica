@@ -55,7 +55,7 @@ class Gide:
             print(f"An error occurred while finding folder: {error}")
             return None
 
-    def criar_arquivo_docs(self, doc_name, data, shared_folder_id, subfolder_name):
+    def criar_arquivo_docs(self, doc_name, content_to_insert, shared_folder_id, subfolder_name):
         if not self.service or not self.docs_service:
             print("Drive or Docs service not initialized. Cannot create document.")
             return None
@@ -83,9 +83,7 @@ class Gide:
                     'location': {
                         'index': 1,
                     },
-                    'text': f"Unidade Escolar: {data.get('unidade_escolar', 'N/A')}\n"
-                            f"Email Principal: {data.get('email_principal', 'N/A')}\n"
-                            f"Categoria: {data.get('categoria', 'N/A')}\n"
+                    'text': content_to_insert
                 }
             }
         ]
@@ -109,6 +107,29 @@ class Gide:
         except HttpError as error:
             print(f"An error occurred while moving document: {error}")
             return None
+
+    def criar_estrutura_categoria_unidade(self, categoria_name, ue_name, root_folder_id):
+        if not self.service:
+            print("Service not initialized. Cannot create folder structure.")
+            return None
+
+        # 1. Create/Get Categoria Folder
+        categoria_folder_id = self.criar_pasta(categoria_name, root_folder_id)
+        if not categoria_folder_id:
+            categoria_folder_id = self._find_folder_id(categoria_name, root_folder_id)
+            if not categoria_folder_id:
+                print(f"Failed to create or find Category folder: {categoria_name}")
+                return None
+
+        # 2. Create/Get UE Folder inside Categoria Folder
+        ue_folder_id = self.criar_pasta(ue_name, categoria_folder_id)
+        if not ue_folder_id:
+            ue_folder_id = self._find_folder_id(ue_name, categoria_folder_id)
+            if not ue_folder_id:
+                print(f"Failed to create or find UE folder: {ue_name}")
+                return None
+        
+        return ue_folder_id
 
 
 if __name__ == '__main__':
