@@ -5,6 +5,10 @@ from pprint import pprint
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/")
+def index():
+    return "API online"
+
 @app.route("/inscricao_entrada", methods=["POST"])
 def inscricao_entrada():
     if request.is_json:
@@ -15,13 +19,3 @@ def inscricao_entrada():
         return jsonify({"message": "Dados recebidos com sucesso!"}), 200
     else:
         return jsonify({"error": "Request must be JSON"}), 400
-
-def main():
-    # The main function can be used to run the Flask app directly
-    # For development, you might run `flask run` from the terminal
-    # or use `app.run()`
-    app.run(debug=True, port=5000)
-
-
-if __name__ == "__main__":
-    main()
