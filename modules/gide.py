@@ -10,6 +10,11 @@ CREDS_FILE = 'creds.json'
 class Gide:
     def __init__(self):
         try:
+            if not os.path.exists(CREDS_FILE):
+                print(f"CRITICAL: Credentials file '{CREDS_FILE}' not found!")
+                self.service = None
+                return
+
             creds = service_account.Credentials.from_service_account_file(
                 CREDS_FILE, scopes=SCOPES)
             self.service = build('drive', 'v3', credentials=creds)
