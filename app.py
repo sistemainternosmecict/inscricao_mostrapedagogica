@@ -29,17 +29,16 @@ def process_participants(data, num_participants):
     max_participants = min(num_participants, 10)
     
     # Define expected fields for a participant
-    # Assuming 'nome_completo', 'matricula', 'cpf' are the primary fields.
+    # Assuming 'nome-completo', 'matricula', 'cpf' are the primary fields.
     # Add other fields here if they should be consistently captured for each participant.
-    participant_fields = ["nome_completo", "matricula", "cpf"] 
+    participant_fields = ["nome-completo", "matricula", "cpf"] 
 
     for i in range(1, max_participants + 1):
-        p_prefix = f"{i}p-"
         participant_data = {}
         found_any_field_for_participant = False
 
         for field_name in participant_fields:
-            full_key = f"{p_prefix}{field_name}"
+            full_key = f"p{num_participants}-{field_name}-{i}" # Corrected full_key construction
             value = data.get(full_key) # Get value for the specific full key
 
             if value is not None: # Only process if the key exists in data (even if empty string)
@@ -118,7 +117,7 @@ def inscricao_entrada():
                     if value: # Only add participants section if there are participants
                         doc_content_lines.append(f"{key.replace('-', ' ').title()}:")
                         for i, participant in enumerate(value):
-                            nome = participant.get("nome_completo", "N/A")
+                            nome = participant.get("nome-completo", "N/A")
                             matricula = participant.get("matricula", "N/A")
                             cpf = participant.get("cpf", "N/A")
                             doc_content_lines.append(f"  Participante {i+1} - {nome} / {matricula} / {cpf}")
