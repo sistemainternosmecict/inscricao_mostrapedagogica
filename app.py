@@ -25,7 +25,9 @@ def mask_cpf(cpf):
 
 def process_participants(data, num_participants):
     participants = []
-    for i in range(1, num_participants + 1):
+    # Limit processing to a maximum of 10 participants, as specified by the user
+    max_participants = min(num_participants, 10)
+    for i in range(1, max_participants + 1):
         p_prefix = f"{i}p-"
         participant_data = {}
         found_participant_data = False
