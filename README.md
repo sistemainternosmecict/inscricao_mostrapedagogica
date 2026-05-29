@@ -6,7 +6,7 @@ Este aplicativo Flask gerencia inscrições, com integração ao Google Drive e 
 ## Pré-requisitos
 - Python 3.8+
 - uv (gerenciador de pacotes Python)
-- Conta de Serviço do Google Cloud com acesso às APIs do Google Drive e Google Docs.
+- Conta no Google Cloud Platform (GCP).
 
 ## Configuração do Ambiente
 
@@ -22,14 +22,27 @@ Este aplicativo Flask gerencia inscrições, com integração ao Google Drive e 
    uv sync
    ```
 
-3. **Configuração do Módulo Gide:**
-   O módulo Gide automatiza a criação de pastas e documentos no Google Drive.
-   
-   - **`creds.json`**: Crie este arquivo no diretório raiz com as credenciais da sua Conta de Serviço do Google Cloud (formato JSON baixado do console do GCP). Este arquivo é obrigatório para autenticação.
+3. **Configuração do Google Cloud (Conta de Serviço):**
+   Para permitir que o `Gide` manipule o Drive e Docs:
+   - No Console do Google Cloud, crie um novo projeto ou selecione um existente.
+   - Habilite a **Google Drive API** e a **Google Docs API**.
+   - Acesse "IAM e administrador" > "Contas de serviço" e crie uma nova conta.
+   - Gere uma **chave** para esta conta (formato JSON).
+   - Salve o arquivo JSON na raiz do projeto e renomeie-o para `creds.json`.
+   - **IMPORTANTE:** Compartilhe a pasta do Google Drive (onde os documentos serão criados) com o e-mail da conta de serviço (encontrado dentro do `creds.json` em `client_email`), dando permissão de **Editor**.
+
+4. **Configuração de Variáveis de Ambiente (`.env`):**
+   Crie um arquivo `.env` na raiz para configurações sensíveis ou específicas do ambiente:
+   ```bash
+   # Exemplo: ID da pasta raiz no Drive onde a estrutura será criada
+   ROOT_FOLDER_ID=seu_id_de_pasta_no_drive
+   ```
+   *Certifique-se de não versionar (commitar) o `creds.json` ou o `.env` (adicione-os ao `.gitignore`).*
 
 ## Como Rodar a Aplicação
 
 ```bash
+# Se necessário, carregue as variáveis de ambiente antes de rodar
 python app.py
 ```
 
@@ -53,7 +66,3 @@ O `Gide` é responsável pela interação com o ecossistema Google.
 - **`criar_pasta`**: Cria pastas no Drive.
 - **`criar_arquivo_docs`**: Cria e popula documentos Docs, incluindo a formatação automática de URLs para links clicáveis.
 - **`criar_estrutura_categoria_unidade`**: Organiza documentos em estruturas de pastas hierárquicas.
-
-### Arquivos de Configuração Mínima:
-1. `creds.json`: Credenciais da Conta de Serviço (GCP).
-2. O sistema espera que a pasta compartilhada no Drive (onde os documentos serão criados) seja configurada e seu ID passado adequadamente para os métodos do `Gide`.
