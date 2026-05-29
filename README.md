@@ -1,33 +1,33 @@
 # Inscrições Mostra Pedagógica
 
 ## Descrição
-Este é um aplicativo Flask simples que serve como um backend para gerenciar inscrições. Atualmente, ele oferece um endpoint para receber dados de inscrição via requisições POST com suporte a CORS.
+Este aplicativo Flask gerencia inscrições, com integração ao Google Drive e Google Docs para automação de documentos.
 
 ## Pré-requisitos
 - Python 3.8+
 - uv (gerenciador de pacotes Python)
+- Conta de Serviço do Google Cloud com acesso às APIs do Google Drive e Google Docs.
 
 ## Configuração do Ambiente
 
-1. **Clone o repositório (se ainda não o fez):**
+1. **Clone o repositório:**
    ```bash
    git clone <URL_DO_SEU_REPOSITORIO>
    cd inscricoes_mostra_pedagogica
    ```
 
 2. **Instale as dependências usando `uv`:**
-   Certifique-se de ter o `uv` instalado. Se não tiver, você pode instalá-lo com `pip`:
    ```bash
    pip install uv
-   ```
-   Em seguida, use `uv` para sincronizar as dependências do projeto:
-   ```bash
    uv sync
    ```
 
-## Como Rodar a Aplicação
+3. **Configuração do Módulo Gide:**
+   O módulo Gide automatiza a criação de pastas e documentos no Google Drive.
+   
+   - **`creds.json`**: Crie este arquivo no diretório raiz com as credenciais da sua Conta de Serviço do Google Cloud (formato JSON baixado do console do GCP). Este arquivo é obrigatório para autenticação.
 
-Para iniciar o servidor Flask em modo de desenvolvimento:
+## Como Rodar a Aplicação
 
 ```bash
 python app.py
@@ -39,33 +39,21 @@ A aplicação estará disponível em `http://127.0.0.1:5000/`.
 
 ### `POST /inscricao_entrada`
 
-Este endpoint recebe dados de inscrição em formato JSON.
+Recebe dados de inscrição, processa-os e utiliza o `Gide` para gerar documentos no Google Docs.
 
 - **URL:** `/inscricao_entrada`
 - **Método:** `POST`
-- **Headers:**
-  - `Content-Type: application/json`
-- **Corpo da Requisição (Exemplo):**
-  ```json
-  {
-    "nome": "João Silva",
-    "email": "joao.silva@example.com",
-    "curso": "Engenharia de Software",
-    "periodo": "Noturno"
-  }
-  ```
-- **Resposta de Sucesso (200 OK):**
-  ```json
-  {
-    "message": "Dados recebidos com sucesso!"
-  }
-  ```
-- **Resposta de Erro (400 Bad Request):**
-  ```json
-  {
-    "error": "Request must be JSON"
-  }
-  ```
+- **Headers:** `Content-Type: application/json`
 
-### Suporte a CORS
-Este aplicativo possui suporte a CORS (Cross-Origin Resource Sharing) habilitado para todas as rotas, permitindo que clientes de diferentes origens acessem a API.
+## Módulo Gide (`modules/gide.py`)
+
+O `Gide` é responsável pela interação com o ecossistema Google.
+
+### Funcionalidades:
+- **`criar_pasta`**: Cria pastas no Drive.
+- **`criar_arquivo_docs`**: Cria e popula documentos Docs, incluindo a formatação automática de URLs para links clicáveis.
+- **`criar_estrutura_categoria_unidade`**: Organiza documentos em estruturas de pastas hierárquicas.
+
+### Arquivos de Configuração Mínima:
+1. `creds.json`: Credenciais da Conta de Serviço (GCP).
+2. O sistema espera que a pasta compartilhada no Drive (onde os documentos serão criados) seja configurada e seu ID passado adequadamente para os métodos do `Gide`.
