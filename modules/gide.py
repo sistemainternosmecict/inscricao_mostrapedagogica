@@ -3,6 +3,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os
 import re
+import json
 
 SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/documents']
 CREDS_FILE = 'creds.json'
@@ -62,61 +63,68 @@ class Gide:
             return None
 
     def _build_docs_insert_requests(self, content_string):
-        requests = []
-        current_index = 1 # Google Docs API uses 1-based indexing for content
+        full_text = ""
+        link_styles = [] # List of (start_index, end_index, url)
         
-        # Regex to find URLs
-        url_pattern = r"https?://[^\s]+" 
+        lines = content_string.split('\n')
+        for line in lines:
+            # Check if this line contains a JSON/List link structure
+            if ":" in line and ('[' in line and ']' in line):
+                parts = line.split(':', 1)
+                label = parts[0] + ": "
+                full_text += label
+                
+                data_str = parts[1].strip()
+                try:
+                    data = json.loads(data_str)
+                except json.JSONDecodeError:
+                    # If not valid JSON, treat as a single string if it looks like one
+                    data = data_str.strip('[]"\'')
+                
+                # Normalize data to a list
+                urls = []
+                if isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict):
+                            urls.append(item.get('url'))
+                        else:
+                            urls.append(item)
+                elif isinstance(data, str):
+                    urls.append(data)
+                
+                for url in urls:
+                    if url:
+                        # Ensure the URL is absolute for it to be clickable
+                        if not url.lower().startswith(('http://', 'https://')):
+                            url = 'https://' + url
+                            
+                        # Indices in Google Docs API are 1-based.
+                        # The start_index is the current position in full_text + 1
+                        start_index = len(full_text) + 1
+                        full_text += url
+                        # The end_index is the position after the URL
+                        end_index = len(full_text) + 1
+                        link_styles.append((start_index, end_index, url))
+                        full_text += '\n'
+                continue # Finished processing this structured line
 
-        last_match_end = 0
-        for match in re.finditer(url_pattern, content_string):
-            # Add text before the URL
-            pre_url_text = content_string[last_match_end:match.start()]
-            if pre_url_text:
-                requests.append({
-                    'insertText': {
-                        'location': {'segmentId': '', 'index': current_index},
-                        'text': pre_url_text
-                    }
-                })
-                current_index += len(pre_url_text)
-
-            # Add the URL as a clickable link
-            url_text = match.group(0)
-            requests.append({
-                'insertText': {
-                    'location': {'segmentId': '', 'index': current_index},
-                    'text': url_text
-                }
-            })
+            # If it's a normal line or JSON parsing failed
+            full_text += line + '\n'
+            
+        requests = []
+        if full_text:
+            # Insert all text at once at index 1
+            requests.append({'insertText': {'location': {'index': 1}, 'text': full_text}})
+            
+        # Apply all styles
+        for (start, end, url) in link_styles:
             requests.append({
                 'updateTextStyle': {
-                    'range': {
-                        'segmentId': '',
-                        'startIndex': current_index,
-                        'endIndex': current_index + len(url_text)
-                    },
-                    'textStyle': {
-                        'link': {
-                            'url': url_text
-                        }
-                    },
+                    'range': {'startIndex': start, 'endIndex': end},
+                    'textStyle': {'link': {'url': url}},
                     'fields': 'link'
                 }
             })
-            current_index += len(url_text)
-            last_match_end = match.end()
-
-        # Add any remaining text after the last URL
-        remaining_text = content_string[last_match_end:]
-        if remaining_text:
-            requests.append({
-                'insertText': {
-                    'location': {'segmentId': '', 'index': current_index},
-                    'text': remaining_text
-                }
-            })
-            current_index += len(remaining_text)
         
         return requests
 
