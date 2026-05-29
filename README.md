@@ -35,7 +35,7 @@ Este aplicativo Flask gerencia inscrições, com integração ao Google Drive e 
    Crie um arquivo `.env` na raiz para configurações sensíveis ou específicas do ambiente:
    ```bash
    # Exemplo: ID da pasta raiz no Drive onde a estrutura será criada
-   ROOT_FOLDER_ID=seu_id_de_pasta_no_drive
+   SHARED_FOLDER_ID=seu_id_de_pasta_no_drive
    ```
    *Certifique-se de não versionar (commitar) o `creds.json` ou o `.env` (adicione-os ao `.gitignore`).*
 
@@ -43,10 +43,10 @@ Este aplicativo Flask gerencia inscrições, com integração ao Google Drive e 
 
 ```bash
 # Se necessário, carregue as variáveis de ambiente antes de rodar
-python app.py
+uv run app.py
 ```
 
-A aplicação estará disponível em `http://127.0.0.1:5000/`.
+A aplicação estará disponível em `http://127.0.0.1:5000/` onde poderá verificar o status da api.
 
 ## Endpoints da API
 
